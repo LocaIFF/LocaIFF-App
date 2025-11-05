@@ -5,8 +5,9 @@ function InfoPanel({ hotspot, onClose, onRequestRoute, onCancelRoute, hasActiveR
     return null;
   }
 
+  // Ajuste --info-panel-width, --info-panel-scale e --info-panel-max-height em src/index.css para personalizar este container.
   return (
-    <aside className="w-80 rounded-3xl border border-white/10 bg-slate-950/75 p-6 text-white backdrop-blur-2xl shadow-soft animate-glass">
+    <aside className="info-panel-surface rounded-3xl border border-white/10 bg-slate-950/75 p-6 text-white backdrop-blur-2xl shadow-soft animate-glass">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-lg font-semibold leading-tight">{hotspot.title}</h2>
         <button

@@ -16,8 +16,8 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
 
   // Ajusta largura da barra de pesquisa dinamicamente
   const computedSearchWidth = useMemo(() => {
-    const base = 520;
-    const max = 760;
+    const base = 480;
+    const max = 680;
     const extra = Math.min(searchTerm.length * 12, max - base);
     return base + extra;
   }, [searchTerm.length]);
@@ -119,6 +119,15 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
     recognition.start();
   }, [activateSearchGlow, isListening, performSearch]);
 
+  const handleVoiceButtonPointerDown = useCallback(
+    (event) => {
+      if (event.pointerType !== "touch" && event.pointerType !== "pen") return;
+      event.preventDefault();
+      handleVoiceSearch();
+    },
+    [handleVoiceSearch]
+  );
+
   // Cleanup ao desmontar
   useEffect(() => {
     return () => {
@@ -133,51 +142,30 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
   }, [layer?.id]);
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 map-touch-layer">
+    <div
+      className={`relative h-screen w-screen overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 map-touch-layer ${
+        hasRoute ? "route-active" : ""
+      }`}
+    >
       <TransformWrapper
         ref={transformRef}
-        minScale={0.5}
-        maxScale={15}
-        initialScale={0.5}
+        minScale={0.01}
+        maxScale={40}
+        initialScale={2}
         wheel={{ step: 0.08 }}
         pinch={{ step: 6 }}
         panning={{ velocityDisabled: true }}
         doubleClick={{ disabled: true }}
       >
-        {({ zoomIn, zoomOut, resetTransform }) => (
+        {() => (
           <>
-            {/* CONTROLES DE ZOOM + BARRA DE PESQUISA */}
-            <div className="absolute bottom-10 left-1/2 z-20 flex -translate-x-1/2 flex-col items-center gap-4 fade-in-up">
-              <div className="ui-overlay flex items-center justify-center gap-3 rounded-full bg-slate-950/70 px-6 py-3 text-white backdrop-blur-2xl shadow-soft">
-                <button
-                  type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/70 text-lg font-bold"
-                  onClick={() => zoomIn(0.6, 320, "easeOut")}
-                >
-                  +
-                </button>
-                <button
-                  type="button"
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-900/70 text-lg font-bold"
-                  onClick={() => zoomOut(0.6, 320, "easeOut")}
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  className="flex h-10 items-center justify-center rounded-full bg-slate-900/70 px-5 text-xs font-semibold uppercase tracking-wide"
-                  onClick={() => resetTransform(0.35)}
-                >
-                  Resetar
-                </button>
-              </div>
-
+            <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center px-6">
               <div
-                className={`search-shell ${isSearchFocused ? "search-shell--active" : ""} ${isListening ? "search-shell--listening" : ""}`}
-                style={{ width: `min(${computedSearchWidth}px, 80vw)` }}
+                className={`pointer-events-auto search-shell ${isSearchFocused ? "search-shell--active" : ""} ${isListening ? "search-shell--listening" : ""}`}
+                style={{ width: `min(${computedSearchWidth}px, 90vw)`, maxWidth: "640px" }}
               >
                 <form
-                  className="ui-overlay search-shell__form flex items-center gap-3 rounded-full bg-slate-950/75 px-5 py-3 text-white backdrop-blur-2xl shadow-soft animate-glass"
+                  className="ui-overlay search-shell__form flex items-center gap-3 rounded-full bg-slate-950/80 px-5 py-4 text-white backdrop-blur-2xl shadow-soft animate-glass"
                   onSubmit={handleSearchSubmit}
                   onFocus={() => activateSearchGlow()}
                   onBlur={(event) => {
@@ -209,6 +197,7 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
                     className={`audio-trigger ${isListening ? "audio-trigger--active" : ""} flex h-10 w-10 items-center justify-center rounded-full border border-white/30 text-white transition`}
                     aria-pressed={isListening}
                     title="Pesquisar por voz (pt-BR)"
+                    onPointerDown={handleVoiceButtonPointerDown}
                     onClick={handleVoiceSearch}
                   >
                     <svg
@@ -229,8 +218,6 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
                 </form>
               </div>
             </div>
-
-            {/* IMAGEM, ROTA E HOTSPOTS */}
             <TransformComponent wrapperClass="h-full w-full" contentClass="h-full w-full">
               <div className="relative h-screen w-screen select-none">
                 <img

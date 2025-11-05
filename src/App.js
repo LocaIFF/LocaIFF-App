@@ -14,7 +14,8 @@ function App() {
   const [isInfoClosing, setIsInfoClosing] = useState(false);
   const autoCloseTimerRef = useRef(null);
   const preloadedImagesRef = useRef(false);
-  const transformRef = useRef(null); // ✅ Corrigido: variável estava faltando
+  const transformRef = useRef(null);
+  const closingAnimationTimerRef = useRef(null);
 
   const currentLayer = useMemo(
     () => layers.find((layer) => layer.id === currentLayerId) ?? null,
@@ -38,43 +39,64 @@ function App() {
     }
   }, []);
 
-  const handleClosePanel = useCallback(() => {
+  const clearClosingAnimationTimer = useCallback(() => {
+    if (closingAnimationTimerRef.current) {
+      clearTimeout(closingAnimationTimerRef.current);
+      closingAnimationTimerRef.current = null;
+    }
+  }, []);
+
+  const finalizePanelClose = useCallback(() => {
+    clearClosingAnimationTimer();
     cancelAutoCloseTimer();
     setSelectedHotspotId(null);
     setRoutePoints([]);
     setIsInfoClosing(false);
-  }, [cancelAutoCloseTimer]);
+  }, [cancelAutoCloseTimer, clearClosingAnimationTimer]);
+
+  const handleClosePanel = useCallback(() => {
+    if (!selectedHotspotId) return;
+    cancelAutoCloseTimer();
+    clearClosingAnimationTimer();
+    setIsInfoClosing(true);
+    closingAnimationTimerRef.current = setTimeout(() => {
+      finalizePanelClose();
+    }, 400);
+  }, [cancelAutoCloseTimer, clearClosingAnimationTimer, finalizePanelClose, selectedHotspotId]);
 
   const startAutoCloseTimer = useCallback(() => {
     cancelAutoCloseTimer();
     autoCloseTimerRef.current = setTimeout(() => {
-      setIsInfoClosing(true);
-      setTimeout(() => {
-        handleClosePanel();
-      }, 400);
+      handleClosePanel();
     }, 30000);
   }, [cancelAutoCloseTimer, handleClosePanel]);
 
   const handleLayerChange = (layerId) => {
     setCurrentLayerId(layerId);
     cancelAutoCloseTimer();
+    clearClosingAnimationTimer();
     setIsInfoClosing(false);
     setSelectedHotspotId(null);
     setRoutePoints([]);
     setViewerKey((prev) => prev + 1);
   };
 
-  const handleHotspotSelect = useCallback((hotspotId) => {
-    if (!hotspotId) return; // ✅ Proteção extra
-    setSelectedHotspotId(hotspotId);
-    setRoutePoints([]);
-    setIsInfoClosing(false);
-    startAutoCloseTimer();
-  }, [startAutoCloseTimer]);
+  const handleHotspotSelect = useCallback(
+    (hotspotId) => {
+      if (!hotspotId) return;
+      clearClosingAnimationTimer();
+      setSelectedHotspotId(hotspotId);
+      setRoutePoints([]);
+      setIsInfoClosing(false);
+      startAutoCloseTimer();
+    },
+    [clearClosingAnimationTimer, startAutoCloseTimer]
+  );
 
   const handleRequestRoute = async (destinationId) => {
     if (!selectedHotspotId || !destinationId) return;
     cancelAutoCloseTimer();
+    clearClosingAnimationTimer();
     setIsInfoClosing(false);
     try {
       const routePayload = await requestRoute(selectedHotspotId, destinationId);
@@ -86,6 +108,7 @@ function App() {
 
   const handleCancelRoute = () => {
     cancelAutoCloseTimer();
+    clearClosingAnimationTimer();
     setRoutePoints([]);
     setIsInfoClosing(false);
   };
@@ -100,12 +123,14 @@ function App() {
   }, []);
 
   useEffect(() => {
-    return () => cancelAutoCloseTimer();
-  }, [cancelAutoCloseTimer]);
+    return () => {
+      cancelAutoCloseTimer();
+      clearClosingAnimationTimer();
+    };
+  }, [cancelAutoCloseTimer, clearClosingAnimationTimer]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-white">
-      {/* Painel lateral */}
       <div className="pointer-events-none absolute left-6 top-6 z-[60] flex flex-col gap-4">
         <div className="pointer-events-auto ui-overlay w-45 rounded-3xl bg-slate-950/80 px-5 py-4 backdrop-blur-2xl shadow-soft">
           <div className="leading-tight">
@@ -122,11 +147,11 @@ function App() {
             layers={layers}
             currentLayerId={currentLayerId}
             onChange={handleLayerChange}
+            verticalCompact
           />
         </div>
       </div>
 
-      {/* Mapa */}
       <div className="absolute inset-0">
         <MapViewer
           key={viewerKey}
@@ -139,12 +164,11 @@ function App() {
         />
       </div>
 
-      {/* Painel de informações */}
-      {selectedHotspot && (
-        <div className="pointer-events-none absolute right-6 top-1/2 flex -translate-y-1/2">
+      {selectedHotspot ? (
+        <div className="pointer-events-none absolute inset-y-0 right-6 z-[55] flex items-center justify-end">
           <div
-            className={`pointer-events-auto ui-overlay info-panel-shell ${
-              isInfoClosing ? "info-panel-shell--closing" : ""
+            className={`pointer-events-auto ui-overlay info-panel-shell info-panel-shell-mobile ${
+              isInfoClosing ? "info-panel-shell-mobile--closing" : ""
             }`}
           >
             <InfoPanel
@@ -153,10 +177,11 @@ function App() {
               onRequestRoute={handleRequestRoute}
               onCancelRoute={handleCancelRoute}
               hasActiveRoute={routePoints.length > 0}
+              compact
             />
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
