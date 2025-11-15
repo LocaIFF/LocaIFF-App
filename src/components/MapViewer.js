@@ -12,9 +12,8 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
   const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   const inactivityTimerRef = useRef(null);
-  const recognitionRef = useRef(null); // ✅ adicionado
+  const recognitionRef = useRef(null);
 
-  // Ajusta largura da barra de pesquisa dinamicamente
   const computedSearchWidth = useMemo(() => {
     const base = 480;
     const max = 680;
@@ -73,7 +72,6 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
       return;
     }
 
-    // Se já estiver escutando, para
     if (isListening) {
       recognitionRef.current?.stop?.();
       setIsListening(false);
@@ -128,7 +126,6 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
     [handleVoiceSearch]
   );
 
-  // Cleanup ao desmontar
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop?.();
@@ -151,7 +148,7 @@ function MapViewer({ layer, hotspots, selectedHotspotId, onHotspotSelect, routeP
         ref={transformRef}
         minScale={0.01}
         maxScale={40}
-        initialScale={2}
+        initialScale={0.6}
         wheel={{ step: 0.08 }}
         pinch={{ step: 6 }}
         panning={{ velocityDisabled: true }}

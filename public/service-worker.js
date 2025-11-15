@@ -1,4 +1,4 @@
-const CACHE_NAME = "lugaiff-shell-v1";
+const CACHE_NAME = "Locaiff-shell-v1";
 const OFFLINE_URLS = ["/"];
 
 self.addEventListener("install", (event) => {

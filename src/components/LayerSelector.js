@@ -1,7 +1,7 @@
 import React from "react";
 
 function LayerSelector({ layers, currentLayerId, onChange }) {
-  const orderedLayers = [...layers]; // TODO: mantenha src/data/layers.js ordenado do térreo (primeiro) ao topo (último).
+  const orderedLayers = [...layers];
 
   return (
     <div className="flex flex-col items-center gap-4 text-white">

@@ -8,7 +8,7 @@ const hotspots = [
     title: "Sala 101",
     block: "Bloco A",
     floorLabel: "Térreo",
-    description: "Sala de atendimento geral com capacidade para 12 pessoas." /* EDITAR: atualizar descrição real */
+    description: "Sala de atendimento geral com capacidade para 12 pessoas."
   },
   {
     id: "sala-102",
@@ -19,7 +19,7 @@ const hotspots = [
     title: "Laboratório de TI",
     block: "Bloco A",
     floorLabel: "Térreo",
-    description: "Laboratório equipado para treinamentos técnicos." /* EDITAR */
+    description: "Laboratório equipado para treinamentos técnicos."
   },
   {
     id: "sala-201",
@@ -30,7 +30,7 @@ const hotspots = [
     title: "Sala 201",
     block: "Bloco B",
     floorLabel: "1º Andar",
-    description: "Sala de reuniões com videoconferência." /* EDITAR */
+    description: "Sala de reuniões com videoconferência."
   },
   {
     id: "sala-202",
@@ -41,7 +41,7 @@ const hotspots = [
     title: "Sala 202",
     block: "Bloco B",
     floorLabel: "1º Andar",
-    description: "Escritório administrativo compartilhado." /* EDITAR */
+    description: "Escritório administrativo compartilhado."
   },
   {
     id: "sala-301",
@@ -52,7 +52,7 @@ const hotspots = [
     title: "Sala 301",
     block: "Bloco C",
     floorLabel: "2º Andar",
-    description: "Auditório principal para eventos." /* EDITAR */
+    description: "Auditório principal para eventos."
   },
   {
     id: "sala-302",
@@ -63,9 +63,8 @@ const hotspots = [
     title: "Sala 302",
     block: "Bloco C",
     floorLabel: "2º Andar",
-    description: "Espaço coworking com 24 posições." /* EDITAR */
+    description: "Espaço coworking com 24 posições."
   }
-  // TODO: adicionar/remover hotspots editando apenas percentuais (xPercent, yPercent)
 ];
 
 export default hotspots;

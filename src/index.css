@@ -1,21 +1,21 @@
 :root {
-  --ui-scale: 1.24; /* EDITAR: escala padrão pensada para tablets */
+  --ui-scale: 1.24;
   --search-shell-scale: 1.3;
-  --info-panel-width: 16rem; /* Ajuste aqui a largura do painel lateral */
-  --info-panel-scale: 1.1; /* Ajuste aqui a escala global do painel */
-  --info-panel-max-height: calc(100vh - 128px); /* Ajuste aqui a altura máxima do painel */
-  --info-panel-animation-easing: cubic-bezier(0.22, 1, 0.36, 1); /* Ajuste aqui a curva de animação do painel */
-  --info-panel-animation-in-duration: 0.58s; /* Ajuste aqui a duração da animação de entrada */
-  --info-panel-animation-out-duration: 0.48s; /* Ajuste aqui a duração da animação de saída */
+  --info-panel-width: 16rem;
+  --info-panel-scale: 1.1;
+  --info-panel-max-height: calc(100vh - 128px);
+  --info-panel-animation-easing: cubic-bezier(0.22, 1, 0.36, 1);
+  --info-panel-animation-in-duration: 0.58s;
+  --info-panel-animation-out-duration: 0.48s;
 }
 
 @media (max-width: 640px) {
   :root {
-    --ui-scale: 1.32; /* EDITAR: escala adicional para telas menores */
+    --ui-scale: 1.32;
     --search-shell-scale: 1.18;
-    --info-panel-width: 18rem; /* Largura do painel em telas menores */
-    --info-panel-scale: 0.95; /* Escala do painel em telas menores */
-    --info-panel-max-height: calc(100vh - 48px); /* Altura máxima do painel em telas menores */
+    --info-panel-width: 18rem;
+    --info-panel-scale: 0.95;
+    --info-panel-max-height: calc(100vh - 48px);
   }
 }
 
@@ -31,11 +31,10 @@ body,
 
 body {
   @apply antialiased text-slate-800;
-  /* TODO: ajustar fundo global se desejar */
 }
 
 .map-touch-layer {
-  touch-action: none; /* EDITAR: remova se precisar do scroll padrão em mobile */
+  touch-action: none;
 }
 
 .search-shell {
@@ -201,8 +200,8 @@ body {
 .info-panel-shell {
   animation: info-panel-slide var(--info-panel-animation-in-duration) var(--info-panel-animation-easing) both;
   will-change: transform, opacity;
-  width: var(--info-panel-width); /* Usa a largura configurada acima */
-  transform: translateX(0) scale(var(--info-panel-scale)); /* Usa a escala configurada acima */
+  width: var(--info-panel-width);
+  transform: translateX(0) scale(var(--info-panel-scale));
   transform-origin: center right;
 }
 
@@ -216,7 +215,7 @@ body {
 
 .info-panel-surface {
   width: 100%;
-  max-height: var(--info-panel-max-height); /* Mantém o conteúdo dentro da altura configurada */
+  max-height: var(--info-panel-max-height);
 }
 
 @media (prefers-reduced-motion: reduce) {

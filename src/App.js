@@ -117,7 +117,7 @@ function App() {
     if (preloadedImagesRef.current) return;
     layers.forEach((layer) => {
       const img = new Image();
-      img.src = layer.imagePath; /* TODO: garantir que os caminhos em src/data/layers.js estejam corretos */
+      img.src = layer.imagePath;
     });
     preloadedImagesRef.current = true;
   }, []);
@@ -138,7 +138,7 @@ function App() {
               Bem-vindo ao
             </span>
             <h1 className="bg-gradient-to-r from-[#32A041] via-[#32A041] to-white bg-clip-text text-3xl font-extrabold uppercase tracking-wide text-transparent">
-              lugaiff
+              LOCAIFF
             </h1>
           </div>
         </div>

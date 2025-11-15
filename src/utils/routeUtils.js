@@ -21,8 +21,3 @@ export function buildRoutePath(pointsPercent = []) {
 
   return [`M ${first.xPercent} ${first.yPercent}`, ...segments].join(" ");
 }
-
-// TODO: implementar algoritmo de rotas (Dijkstra/A*)
-// export function calculateSmartRoute(graph, originId, destinationId) {
-//   throw new Error("Não implementado. Integrar com backend ou escrever algoritmo local.");
-// }
