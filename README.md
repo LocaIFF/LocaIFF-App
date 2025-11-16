@@ -6,7 +6,7 @@
 
 ## Front-end
 
-### ✨ Destaques do cliente
+### ✨ Destaques:
 
 | Status | Funcionalidade | Detalhes |
 | --- | --- | --- |
@@ -195,8 +195,3 @@ export async function fetchHotspotsFromApi(layerId) {
 | **Curto prazo** | Integração PostgreSQL/PostGIS + pgRouting | Rotas reais, distância/tempo confiáveis. |
 | **Médio prazo** | Painel administrativo (CRUD de hotspots/rotas) | Pode ser outro front ou CMS headless. |
 | **Longo prazo** | Telemetria/analytics (rotas mais usadas, salas populares) | Fornece insights para gestão do campus. |
-
----
-
-Licença sob [MIT](LICENSE). Contribuições são bem-vindas: abra issues com contexto claro, envie PRs com lint/testes passando e mantenha commits objetivos (PT ou EN, mas consistentes).
-````
