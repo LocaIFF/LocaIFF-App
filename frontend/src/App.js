@@ -168,7 +168,7 @@ function App() {
       {/* ── Sidebar esquerda ── */}
       <div className="pointer-events-none absolute left-3 top-3 z-[60] flex flex-col gap-3 sm:left-4 sm:top-4 sm:gap-3 md:left-6 md:top-6 md:gap-4">
         {/* Logo */}
-        <GlassSurface className="pointer-events-auto w-36 px-4 py-3 shadow-soft sm:w-40 sm:px-4 sm:py-3 md:w-45 md:px-5 md:py-4">
+        <GlassSurface className="pointer-events-auto w-44 px-4 py-3 shadow-soft sm:w-48 sm:px-5 sm:py-3 md:w-48 md:px-5 md:py-4">
           <div className="leading-tight">
             <span className="text-[10px] uppercase tracking-[0.3em] text-white/50 sm:text-xs">Bem-vindo ao</span>
             <h1 className="bg-gradient-to-r from-[#32A041] via-[#32A041] to-white bg-clip-text text-2xl font-extrabold uppercase tracking-wide text-transparent sm:text-3xl">
@@ -178,7 +178,7 @@ function App() {
         </GlassSurface>
 
         {/* Seletor de camadas */}
-        <GlassSurface className="pointer-events-auto w-36 p-3 shadow-soft sm:w-40 sm:p-3 md:w-45 md:p-4">
+        <GlassSurface className="pointer-events-auto w-44 p-3 shadow-soft sm:w-48 sm:p-3 md:w-48 md:p-4">
           <LayerSelector
             layers={layers}
             currentLayerId={currentLayerId}
@@ -222,7 +222,7 @@ function App() {
 
       {/* ── Painel lateral (desktop/tablet) / bottom sheet (mobile) ── */}
       {selectedHotspot && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex items-end justify-center p-3 sm:inset-x-auto sm:inset-y-0 sm:right-4 sm:bottom-auto sm:items-center sm:justify-end sm:p-0 md:right-6">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex items-end justify-center p-3 sm:inset-x-auto sm:top-0 sm:right-4 sm:bottom-0 sm:flex sm:items-center sm:justify-end sm:p-0 md:right-6">
           <div className="pointer-events-auto w-full max-w-sm sm:w-auto sm:max-w-none" style={{ width: "var(--info-panel-width)" }}>
             <InfoPanel
               hotspot={selectedHotspot}
