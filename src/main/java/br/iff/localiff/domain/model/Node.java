@@ -1,10 +1,11 @@
-package main.java.br.iff.localiff.domain.model;
+package br.iff.localiff.domain.model;
 
 import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "nodes")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Node {
@@ -13,32 +14,32 @@ public class Node {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 30)
-    private String codigo;          // "s001", "aud1", etc.
+    @Column(nullable = false, unique = true, length = 50)
+    private String codigo;
 
     @Column(nullable = false, length = 100)
-    private String nome;            // "Sala 001", "Auditório Principal"
+    private String nome;
 
     @Column(nullable = false, length = 30)
-    private String tipo;            // SALA, CORREDOR, ESCADA, ELEVADOR...
+    private String tipo;
 
     @Column(nullable = false)
-    private int andar;              // 0 = térreo, 1 = 1º andar...
+    private int andar;
 
-    @Column(nullable = false)
-    private double x;               // coordenada X no mapa
+    @Column(name = "x_percent", nullable = false)
+    private double xPercent;
 
-    @Column(nullable = false)
-    private double y;               // coordenada Y no mapa
+    @Column(name = "y_percent", nullable = false)
+    private double yPercent;
 
-    @Column(nullable = false)
-    private boolean acessivelPcd;   // local acessível?
+    @Column(name = "acessivel_pcd", nullable = false)
+    private boolean acessivelPcd;
 
     @Column(length = 255)
     private String descricao;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "building_id", nullable = false)
-    private Building building;      // bloco ao qual o local pertence
+    private Building building;
 }
 

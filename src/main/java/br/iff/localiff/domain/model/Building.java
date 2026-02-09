@@ -1,12 +1,12 @@
-package main.java.br.iff.localiff.domain.model;
+package br.iff.localiff.domain.model;
 
 import jakarta.persistence.*;
-import java.util.List;
+import lombok.*;
 
 @Entity
 @Table(name = "buildings")
-@Data
-@NoArgsConstructor 
+@Getter @Setter
+@NoArgsConstructor
 @AllArgsConstructor
 public class Building {
 
@@ -15,10 +15,10 @@ public class Building {
     private Long id;
 
     @Column(nullable = false, unique = true, length = 20)
-    private String codigo;          // Ex.: "S", "A", "BIB"
+    private String codigo;
 
     @Column(nullable = false, length = 100)
-    private String nome;            // Ex.: "Bloco S - Salas de Aula"
+    private String nome;
 
     @Column(length = 255)
     private String descricao;

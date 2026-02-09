@@ -2,9 +2,12 @@ import React, { useMemo, useRef, useState, useCallback, useEffect } from "react"
 import LayerSelector from "./components/LayerSelector";
 import MapViewer from "./components/MapViewer";
 import InfoPanel from "./components/InfoPanel";
+import GlassSurface from "./components/common/GlassSurface";
+import AccessibilityToggle from "./components/common/AccessibilityToggle";
 import layers from "./data/layers";
 import hotspotsData from "./data/hotspots";
-import { requestRoute } from "./api";
+import useHighContrast from "./hooks/useHighContrast";
+import { requestRoute, layerIdToFloor } from "./api";
 
 function App() {
   const [currentLayerId, setCurrentLayerId] = useState(layers[0]?.id ?? null);
@@ -12,176 +15,226 @@ function App() {
   const [routePoints, setRoutePoints] = useState([]);
   const [viewerKey, setViewerKey] = useState(0);
   const [isInfoClosing, setIsInfoClosing] = useState(false);
+  const [isLoadingRoute, setIsLoadingRoute] = useState(false);
+
   const autoCloseTimerRef = useRef(null);
-  const preloadedImagesRef = useRef(false);
+  const closingTimerRef = useRef(null);
+  const preloadedRef = useRef(false);
   const transformRef = useRef(null);
-  const closingAnimationTimerRef = useRef(null);
+
+  const { highContrast, toggleHighContrast } = useHighContrast();
 
   const currentLayer = useMemo(
-    () => layers.find((layer) => layer.id === currentLayerId) ?? null,
+    () => layers.find((l) => l.id === currentLayerId) ?? null,
     [currentLayerId]
   );
 
-  const hotspots = useMemo(
-    () => hotspotsData.filter((spot) => spot.layerId === currentLayerId),
+  const visibleHotspots = useMemo(
+    () => hotspotsData.filter((s) => s.layerId === currentLayerId),
     [currentLayerId]
   );
 
   const selectedHotspot = useMemo(
-    () => hotspotsData.find((spot) => spot.id === selectedHotspotId) ?? null,
+    () => hotspotsData.find((s) => s.id === selectedHotspotId) ?? null,
     [selectedHotspotId]
   );
 
-  const cancelAutoCloseTimer = useCallback(() => {
+  // Filtra pontos da rota para exibir apenas no andar atual
+  const currentFloor = useMemo(() => layerIdToFloor(currentLayerId), [currentLayerId]);
+  const visibleRoutePoints = useMemo(() => {
+    if (!routePoints || routePoints.length === 0) return [];
+    // Se os pontos não têm floor (mock antigo), exibir todos
+    if (routePoints[0].floor === undefined) return routePoints;
+    return routePoints.filter((p) => p.floor === currentFloor);
+  }, [routePoints, currentFloor]);
+
+  // ── Timers ──
+  const cancelAutoClose = useCallback(() => {
     if (autoCloseTimerRef.current) {
       clearTimeout(autoCloseTimerRef.current);
       autoCloseTimerRef.current = null;
     }
   }, []);
 
-  const clearClosingAnimationTimer = useCallback(() => {
-    if (closingAnimationTimerRef.current) {
-      clearTimeout(closingAnimationTimerRef.current);
-      closingAnimationTimerRef.current = null;
+  const cancelClosingAnim = useCallback(() => {
+    if (closingTimerRef.current) {
+      clearTimeout(closingTimerRef.current);
+      closingTimerRef.current = null;
     }
   }, []);
 
   const finalizePanelClose = useCallback(() => {
-    clearClosingAnimationTimer();
-    cancelAutoCloseTimer();
+    cancelClosingAnim();
+    cancelAutoClose();
     setSelectedHotspotId(null);
     setRoutePoints([]);
     setIsInfoClosing(false);
-  }, [cancelAutoCloseTimer, clearClosingAnimationTimer]);
+  }, [cancelAutoClose, cancelClosingAnim]);
 
   const handleClosePanel = useCallback(() => {
     if (!selectedHotspotId) return;
-    cancelAutoCloseTimer();
-    clearClosingAnimationTimer();
+    cancelAutoClose();
+    cancelClosingAnim();
     setIsInfoClosing(true);
-    closingAnimationTimerRef.current = setTimeout(() => {
-      finalizePanelClose();
-    }, 400);
-  }, [cancelAutoCloseTimer, clearClosingAnimationTimer, finalizePanelClose, selectedHotspotId]);
+    closingTimerRef.current = setTimeout(finalizePanelClose, 400);
+  }, [cancelAutoClose, cancelClosingAnim, finalizePanelClose, selectedHotspotId]);
 
-  const startAutoCloseTimer = useCallback(() => {
-    cancelAutoCloseTimer();
-    autoCloseTimerRef.current = setTimeout(() => {
-      handleClosePanel();
-    }, 30000);
-  }, [cancelAutoCloseTimer, handleClosePanel]);
+  const startAutoClose = useCallback(() => {
+    cancelAutoClose();
+    autoCloseTimerRef.current = setTimeout(handleClosePanel, 30000);
+  }, [cancelAutoClose, handleClosePanel]);
 
-  const handleLayerChange = (layerId) => {
-    setCurrentLayerId(layerId);
-    cancelAutoCloseTimer();
-    clearClosingAnimationTimer();
-    setIsInfoClosing(false);
-    setSelectedHotspotId(null);
-    setRoutePoints([]);
-    setViewerKey((prev) => prev + 1);
-  };
+  // ── Handlers ──
+  const handleLayerChange = useCallback(
+    (layerId) => {
+      setCurrentLayerId(layerId);
+      cancelAutoClose();
+      cancelClosingAnim();
+      setIsInfoClosing(false);
+      setSelectedHotspotId(null);
+      setRoutePoints([]);
+      setViewerKey((k) => k + 1);
+    },
+    [cancelAutoClose, cancelClosingAnim]
+  );
 
   const handleHotspotSelect = useCallback(
     (hotspotId) => {
       if (!hotspotId) return;
-      clearClosingAnimationTimer();
+
+      // Se hotspot está em outra camada, troca automaticamente
+      const spot = hotspotsData.find((s) => s.id === hotspotId);
+      if (spot && spot.layerId !== currentLayerId) {
+        setCurrentLayerId(spot.layerId);
+        setViewerKey((k) => k + 1);
+      }
+
+      cancelClosingAnim();
       setSelectedHotspotId(hotspotId);
       setRoutePoints([]);
       setIsInfoClosing(false);
-      startAutoCloseTimer();
+      startAutoClose();
     },
-    [clearClosingAnimationTimer, startAutoCloseTimer]
+    [cancelClosingAnim, currentLayerId, startAutoClose]
   );
 
-  const handleRequestRoute = async (destinationId) => {
-    if (!selectedHotspotId || !destinationId) return;
-    cancelAutoCloseTimer();
-    clearClosingAnimationTimer();
-    setIsInfoClosing(false);
-    try {
-      const routePayload = await requestRoute(selectedHotspotId, destinationId);
-      setRoutePoints(routePayload.pointsPercent ?? []);
-    } catch (error) {
-      console.error("Falha ao solicitar rota simulada:", error);
-    }
-  };
+  const handleRequestRoute = useCallback(
+    async (destinationId) => {
+      if (!selectedHotspotId || !destinationId) return;
+      cancelAutoClose();
+      cancelClosingAnim();
+      setIsInfoClosing(false);
+      setIsLoadingRoute(true);
 
-  const handleCancelRoute = () => {
-    cancelAutoCloseTimer();
-    clearClosingAnimationTimer();
+      try {
+        const payload = await requestRoute(selectedHotspotId, destinationId);
+        setRoutePoints(payload.pointsPercent ?? []);
+      } catch (error) {
+        console.error("Falha ao solicitar rota:", error);
+      } finally {
+        setIsLoadingRoute(false);
+      }
+    },
+    [cancelAutoClose, cancelClosingAnim, selectedHotspotId]
+  );
+
+  const handleCancelRoute = useCallback(() => {
+    cancelAutoClose();
+    cancelClosingAnim();
     setRoutePoints([]);
     setIsInfoClosing(false);
-  };
+  }, [cancelAutoClose, cancelClosingAnim]);
 
+  // ── Preload de imagens ──
   useEffect(() => {
-    if (preloadedImagesRef.current) return;
-    layers.forEach((layer) => {
+    if (preloadedRef.current) return;
+    layers.forEach((l) => {
       const img = new Image();
-      img.src = layer.imagePath;
+      img.src = l.imagePath;
     });
-    preloadedImagesRef.current = true;
+    preloadedRef.current = true;
   }, []);
 
+  // ── Cleanup ──
   useEffect(() => {
     return () => {
-      cancelAutoCloseTimer();
-      clearClosingAnimationTimer();
+      cancelAutoClose();
+      cancelClosingAnim();
     };
-  }, [cancelAutoCloseTimer, clearClosingAnimationTimer]);
+  }, [cancelAutoClose, cancelClosingAnim]);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-white">
-      <div className="pointer-events-none absolute left-6 top-6 z-[60] flex flex-col gap-4">
-        <div className="pointer-events-auto ui-overlay w-45 rounded-3xl bg-slate-950/80 px-5 py-4 backdrop-blur-2xl shadow-soft">
+      {/* ── Sidebar esquerda ── */}
+      <div className="pointer-events-none absolute left-3 top-3 z-[60] flex flex-col gap-3 sm:left-4 sm:top-4 sm:gap-3 md:left-6 md:top-6 md:gap-4">
+        {/* Logo */}
+        <GlassSurface className="pointer-events-auto w-36 px-4 py-3 shadow-soft sm:w-40 sm:px-4 sm:py-3 md:w-45 md:px-5 md:py-4">
           <div className="leading-tight">
-            <span className="text-xs uppercase tracking-[0.3em] text-white/50">
-              Bem-vindo ao
-            </span>
-            <h1 className="bg-gradient-to-r from-[#32A041] via-[#32A041] to-white bg-clip-text text-3xl font-extrabold uppercase tracking-wide text-transparent">
+            <span className="text-[10px] uppercase tracking-[0.3em] text-white/50 sm:text-xs">Bem-vindo ao</span>
+            <h1 className="bg-gradient-to-r from-[#32A041] via-[#32A041] to-white bg-clip-text text-2xl font-extrabold uppercase tracking-wide text-transparent sm:text-3xl">
               LOCAIFF
             </h1>
           </div>
-        </div>
-        <div className="pointer-events-auto ui-overlay w-45 rounded-3xl bg-slate-950/75 p-4 backdrop-blur-2xl shadow-soft">
+        </GlassSurface>
+
+        {/* Seletor de camadas */}
+        <GlassSurface className="pointer-events-auto w-36 p-3 shadow-soft sm:w-40 sm:p-3 md:w-45 md:p-4">
           <LayerSelector
             layers={layers}
             currentLayerId={currentLayerId}
             onChange={handleLayerChange}
-            verticalCompact
+          />
+        </GlassSurface>
+
+        {/* Alto contraste */}
+        <div className="pointer-events-auto">
+          <AccessibilityToggle
+            highContrast={highContrast}
+            onToggle={toggleHighContrast}
           />
         </div>
       </div>
 
+      {/* ── Mapa ── */}
       <div className="absolute inset-0">
         <MapViewer
           key={viewerKey}
           layer={currentLayer}
-          hotspots={hotspots}
+          hotspots={visibleHotspots}
+          allHotspots={hotspotsData}
           selectedHotspotId={selectedHotspotId}
           onHotspotSelect={handleHotspotSelect}
-          routePoints={routePoints}
+          routePoints={visibleRoutePoints}
           transformRef={transformRef}
+          layers={layers}
+          onLayerChange={handleLayerChange}
         />
       </div>
 
-      {selectedHotspot ? (
-        <div className="pointer-events-none absolute inset-y-0 right-6 z-[55] flex items-center justify-end">
-          <div
-            className={`pointer-events-auto ui-overlay info-panel-shell info-panel-shell-mobile ${
-              isInfoClosing ? "info-panel-shell-mobile--closing" : ""
-            }`}
-          >
+      {/* ── Loading overlay de rota ── */}
+      {isLoadingRoute && (
+        <div className="pointer-events-none absolute inset-0 z-[70] flex items-center justify-center">
+          <div className="glass-surface animate-fade-in rounded-2xl px-8 py-4 text-sm font-medium text-white shadow-glow">
+            Calculando rota…
+          </div>
+        </div>
+      )}
+
+      {/* ── Painel lateral (desktop/tablet) / bottom sheet (mobile) ── */}
+      {selectedHotspot && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex items-end justify-center p-3 sm:inset-x-auto sm:inset-y-0 sm:right-4 sm:bottom-auto sm:items-center sm:justify-end sm:p-0 md:right-6">
+          <div className="pointer-events-auto w-full max-w-sm sm:w-auto sm:max-w-none" style={{ width: "var(--info-panel-width)" }}>
             <InfoPanel
               hotspot={selectedHotspot}
               onClose={handleClosePanel}
               onRequestRoute={handleRequestRoute}
               onCancelRoute={handleCancelRoute}
               hasActiveRoute={routePoints.length > 0}
-              compact
+              isClosing={isInfoClosing}
             />
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }

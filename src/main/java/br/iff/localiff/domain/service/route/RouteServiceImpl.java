@@ -1,175 +1,136 @@
-package main.java.br.iff.localiff.domain.service.route;
+package br.iff.localiff.domain.service.route;
 
-import br.com.localiff.api.dto.PathRequestDTO;
-import br.com.localiff.api.dto.PathResponseDTO;
-import br.com.localiff.domain.model.Edge;
-import br.com.localiff.domain.model.Node;
-import br.com.localiff.domain.repository.EdgeRepository;
-import br.com.localiff.domain.repository.NodeRepository;
-import br.com.localiff.domain.service.RouteService;
+import br.iff.localiff.api.dto.PathRequestDTO;
+import br.iff.localiff.api.dto.PathResponseDTO;
+import br.iff.localiff.api.dto.PathResponseDTO.RoutePoint;
+import br.iff.localiff.domain.model.Edge;
+import br.iff.localiff.domain.model.Node;
+import br.iff.localiff.domain.repository.EdgeRepository;
+import br.iff.localiff.domain.repository.NodeRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.lang.annotation.Inherited;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class RouteServiceImpl implements RouteService {
 
-    @Injected
-    private EdgeRepository edgeRepository;
+    private static final String KIOSK_CODE = "kiosk";
 
-    @Injected
-    private NodeRepository nodeRepository;
-
-    @Injected
-    private BuildingRepository buildingRepository;
-
+    private final NodeRepository nodeRepository;
+    private final EdgeRepository edgeRepository;
 
     @Override
     public PathResponseDTO calcularRota(PathRequestDTO request) {
-        
-        Long origemId = request.getOrigemId();
-        Long destinoId = request.getDestinoId();
-        boolean onlyAccessible = request.isOnlyAccessible();
 
-        // ------------ CAMADA DE REPOSITORY ------------
-        // aqui eu só chamo métodos do repository
-        List<Node> nodes = nodeRepository.findAll();
-        List<Edge> edges = edgeRepository.findAll();
-        // ----------------------------------------------
+        // Origem é sempre o quiosque fixo
+        Node kiosk = nodeRepository.findByCodigo(KIOSK_CODE)
+                .orElseThrow(() -> new RuntimeException("Nó do quiosque não encontrado (codigo='kiosk')"));
 
-        Map<Long, Node> nodeMap = nodes.stream().collect(Collectors.toMap(Node::getId, n -> n));
+        Node destino = nodeRepository.findByCodigo(request.getDestinationCode())
+                .orElseThrow(() -> new RuntimeException(
+                        "Destino não encontrado: " + request.getDestinationCode()));
 
-        if (!nodeMap.containsKey(origemId) || !nodeMap.containsKey(destinoId)) {
-           
-            throw new IllegalArgumentException("Origem ou destino inválidos");
+        List<Node> allNodes = nodeRepository.findAll();
+        List<Edge> allEdges = edgeRepository.findAll();
+
+        Map<Long, Node> nodeMap = allNodes.stream()
+                .collect(Collectors.toMap(Node::getId, n -> n));
+
+        Map<Long, List<Adjacency>> adj = buildAdjacencyList(allEdges, request.isOnlyAccessible());
+
+        Set<Long> allIds = nodeMap.keySet();
+
+        DijkstraResult result = dijkstra(adj, kiosk.getId(), destino.getId(), allIds);
+
+        List<Long> pathIds = reconstructPath(result.previous, kiosk.getId(), destino.getId());
+
+        if (pathIds.isEmpty()) {
+            throw new RuntimeException("Nenhuma rota encontrada de '"
+                    + KIOSK_CODE + "' até '" + request.getDestinationCode() + "'");
         }
 
-        Map<Long, List<Adjacency>> adj = buildAdjacencyList(edges, onlyAccessible);
+        List<RoutePoint> points = pathIds.stream()
+                .map(nodeMap::get)
+                .filter(Objects::nonNull)
+                .map(n -> new RoutePoint(n.getXPercent(), n.getYPercent(), n.getAndar()))
+                .collect(Collectors.toList());
 
-        DijkstraResult result = dijkstra(adj, origemId, destinoId);
+        double dist = result.distance.getOrDefault(destino.getId(), 0.0);
 
-        List<Long> path = reconstructPath(result.previous, origemId, destinoId);
-
-        PathResponseDTO response = new PathResponseDTO();
-        response.setNodeIds(path);
-        response.setDistanciaTotal(
-                result.distance.getOrDefault(destinoId, Double.POSITIVE_INFINITY)
-        );
-        return response;
-        // ----------------------------------------------
+        return new PathResponseDTO(UUID.randomUUID().toString(), points, dist);
     }
 
-    // ======= classes e métodos privados (só no Service) =======
+    // ======================== Dijkstra ========================
 
-    private static class Adjacency {
-        
-        Long neighborId;
-        double weight;
+    private record Adjacency(Long neighborId, double weight) {}
 
-        Adjacency(Long neighborId, double weight) {
-            this.neighborId = neighborId;
-            this.weight = weight;
-        }
-    }
+    private record DijkstraResult(Map<Long, Double> distance, Map<Long, Long> previous) {}
 
     private Map<Long, List<Adjacency>> buildAdjacencyList(List<Edge> edges, boolean onlyAccessible) {
-        
         Map<Long, List<Adjacency>> adj = new HashMap<>();
+        for (Edge e : edges) {
+            if (onlyAccessible && !e.isAcessivelPcd()) continue;
 
-        for (Edge edge : edges) {
-            if (onlyAccessible && !edge.isAcessivelPcd()) {
-                continue;
-            }
-            Long origemId = edge.getOrigem().getId();
-            Long destinoId = edge.getDestino().getId();
-            double peso = edge.getPeso();
+            Long oId = e.getOrigem().getId();
+            Long dId = e.getDestino().getId();
+            double peso = e.getPeso();
 
-            adj.computeIfAbsent(origemId, k -> new ArrayList<>())
-               .add(new Adjacency(destinoId, peso));
-
-            if (edge.isBidirecional()) {
-                adj.computeIfAbsent(destinoId, k -> new ArrayList<>())
-                   .add(new Adjacency(origemId, peso));
+            adj.computeIfAbsent(oId, k -> new ArrayList<>()).add(new Adjacency(dId, peso));
+            if (e.isBidirecional()) {
+                adj.computeIfAbsent(dId, k -> new ArrayList<>()).add(new Adjacency(oId, peso));
             }
         }
-
         return adj;
     }
 
-    private static class DijkstraResult {
-       
-        Map<Long, Double> distance;
-        Map<Long, Long> previous;
-
-        DijkstraResult(Map<Long, Double> distance, Map<Long, Long> previous) {
-            this.distance = distance;
-            this.previous = previous;
-        }
-    }
-
     private DijkstraResult dijkstra(Map<Long, List<Adjacency>> adj,
-                                    Long origemId,
-                                    Long destinoId) {
-
+                                    Long origemId, Long destinoId,
+                                    Set<Long> allNodeIds) {
         Map<Long, Double> dist = new HashMap<>();
         Map<Long, Long> prev = new HashMap<>();
+        Set<Long> visited = new HashSet<>();
 
-        PriorityQueue<long[]> pq =
-                new PriorityQueue<>(Comparator.comparingDouble(a -> a[1]));
-
-        // inicializar distâncias
-        for (Long nodeId : adj.keySet()) {
-            dist.put(nodeId, Double.POSITIVE_INFINITY);
-        }
+        for (Long id : allNodeIds) dist.put(id, Double.MAX_VALUE);
         dist.put(origemId, 0.0);
 
-        pq.offer(new long[]{origemId, 0L});
+        PriorityQueue<double[]> pq = new PriorityQueue<>(Comparator.comparingDouble(a -> a[1]));
+        pq.offer(new double[]{origemId, 0.0});
 
         while (!pq.isEmpty()) {
-            long[] curr = pq.poll();
-            Long currentId = curr[0];
+            double[] curr = pq.poll();
+            long currentId = (long) curr[0];
 
-            if (currentId.equals(destinoId)) {
-                break;
-            }
+            if (visited.contains(currentId)) continue;
+            visited.add(currentId);
+            if (currentId == destinoId) break;
 
-            double currentDist = dist.getOrDefault(currentId, Double.POSITIVE_INFINITY);
-            List<Adjacency> neighbors = adj.getOrDefault(currentId, List.of());
-
-            for (Adjacency adjNode : neighbors) {
-                Long neighborId = adjNode.neighborId;
-                double newDist = currentDist + adjNode.weight;
-
-                if (newDist < dist.getOrDefault(neighborId, Double.POSITIVE_INFINITY)) {
-                    dist.put(neighborId, newDist);
-                    prev.put(neighborId, currentId);
-                    pq.offer(new long[]{neighborId, (long) newDist});
+            for (Adjacency a : adj.getOrDefault(currentId, List.of())) {
+                if (visited.contains(a.neighborId)) continue;
+                double newDist = dist.get(currentId) + a.weight;
+                if (newDist < dist.getOrDefault(a.neighborId, Double.MAX_VALUE)) {
+                    dist.put(a.neighborId, newDist);
+                    prev.put(a.neighborId, currentId);
+                    pq.offer(new double[]{a.neighborId, newDist});
                 }
             }
         }
-
         return new DijkstraResult(dist, prev);
     }
 
-    private List<Long> reconstructPath(Map<Long, Long> previous,
-                                       Long origemId,
-                                       Long destinoId) {
-        List<Long> path = new ArrayList<>();
-        Long current = destinoId;
-
+    private List<Long> reconstructPath(Map<Long, Long> previous, Long origemId, Long destinoId) {
         if (!origemId.equals(destinoId) && !previous.containsKey(destinoId)) {
-            return path;
+            return List.of();
         }
-
+        LinkedList<Long> path = new LinkedList<>();
+        Long current = destinoId;
         while (current != null) {
-            path.add(current);
+            path.addFirst(current);
             if (current.equals(origemId)) break;
             current = previous.get(current);
         }
-
-        Collections.reverse(path);
         return path;
     }
 }

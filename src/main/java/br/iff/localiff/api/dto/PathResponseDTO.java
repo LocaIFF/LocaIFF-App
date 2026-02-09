@@ -1,34 +1,27 @@
-package main.java.br.iff.localiff.api.dto;
+package br.iff.localiff.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import lombok.*;
 import java.util.List;
 
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class PathResponseDTO {
 
-    private List<Long> nodeIds;      // sequência de nós (em ordem)
-    private double distanciaTotal;   // soma dos pesos da rota
+    private String routeId;
+    private List<RoutePoint> pointsPercent;
+    private double distanciaTotal;
 
-    public PathResponseDTO() {
-    }
-
-    public PathResponseDTO(List<Long> nodeIds, double distanciaTotal) {
-        this.nodeIds = nodeIds;
-        this.distanciaTotal = distanciaTotal;
-    }
-
-    public List<Long> getNodeIds() {
-        return nodeIds;
-    }
-
-    public void setNodeIds(List<Long> nodeIds) {
-        this.nodeIds = nodeIds;
-    }
-
-    public double getDistanciaTotal() {
-        return distanciaTotal;
-    }
-
-    public void setDistanciaTotal(double distanciaTotal) {
-        this.distanciaTotal = distanciaTotal;
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonAutoDetect(fieldVisibility = JsonAutoDetect.Visibility.ANY,
+                    getterVisibility = JsonAutoDetect.Visibility.NONE,
+                    setterVisibility = JsonAutoDetect.Visibility.NONE)
+    public static class RoutePoint {
+        private double xPercent;
+        private double yPercent;
+        private int floor;
     }
 }
 

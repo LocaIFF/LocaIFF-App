@@ -1,34 +1,38 @@
 import React from "react";
+import clsx from "clsx";
+import RippleButton from "./common/RippleButton";
 
 function LayerSelector({ layers, currentLayerId, onChange }) {
-  const orderedLayers = [...layers];
-
   return (
-    <div className="flex flex-col items-center gap-4 text-white">
-      <span className="text-xs uppercase tracking-[0.25em] text-white/60">
-        Andares
-      </span>
-      <div className="flex flex-col gap-2">
-        {orderedLayers
-          .slice()
+    <nav className="flex flex-col items-center gap-2 text-white sm:gap-3 md:gap-4" aria-label="Seleção de andares">
+      <span className="text-[10px] uppercase tracking-[0.25em] text-white/60 sm:text-xs">Andares</span>
+      <div className="flex flex-col gap-1.5 sm:gap-2" role="radiogroup" aria-label="Lista de andares">
+        {[...layers]
           .reverse()
-          .map((layer) => (
-            <button
-              key={layer.id}
-              type="button"
-              className={`flex h-12 w-32 items-center justify-center rounded-2xl text-sm font-semibold transition ${
-                currentLayerId === layer.id
-                  ? "bg-emerald-400/90 text-slate-900 shadow-soft ring-2 ring-emerald-300/60"
-                  : "bg-slate-900/70 text-white hover:bg-slate-800/80"
-              }`}
-              onClick={() => onChange(layer.id)}
-            >
-              {layer.name}
-            </button>
-          ))}
+          .map((layer) => {
+            const isActive = currentLayerId === layer.id;
+            return (
+              <RippleButton
+                key={layer.id}
+                className={clsx(
+                  "flex items-center justify-center rounded-xl text-xs font-semibold transition sm:rounded-2xl sm:text-sm",
+                  "h-9 w-24 sm:h-10 sm:w-28 md:h-12 md:w-32",
+                  isActive
+                    ? "bg-emerald-400/90 text-slate-900 shadow-glow ring-2 ring-emerald-300/60"
+                    : "bg-slate-900/70 text-white hover:bg-slate-800/80"
+                )}
+                onClick={() => onChange(layer.id)}
+                role="radio"
+                aria-checked={isActive}
+                aria-label={`Selecionar ${layer.name}`}
+              >
+                {layer.name}
+              </RippleButton>
+            );
+          })}
       </div>
-    </div>
+    </nav>
   );
 }
 
-export default LayerSelector;
+export default React.memo(LayerSelector);

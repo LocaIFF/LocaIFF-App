@@ -1,10 +1,11 @@
-package main.java.br.iff.localiff.domain.model;
+package br.iff.localiff.domain.model;
 
 import jakarta.persistence.*;
+import lombok.*;
 
 @Entity
 @Table(name = "edges")
-@Data
+@Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 public class Edge {
@@ -13,20 +14,20 @@ public class Edge {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "origem_id")
     private Node origem;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "destino_id")
     private Node destino;
 
     @Column(nullable = false)
-    private double peso;            // distância ou custo da aresta
+    private double peso;
 
     @Column(nullable = false)
-    private boolean bidirecional;   // true se for mão dupla
+    private boolean bidirecional;
 
-    @Column(nullable = false)
-    private boolean acessivelPcd;   // trecho acessível?
+    @Column(name = "acessivel_pcd", nullable = false)
+    private boolean acessivelPcd;
 }
