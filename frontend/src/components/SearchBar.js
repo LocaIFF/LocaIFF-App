@@ -2,62 +2,79 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import clsx from "clsx";
 import useDebounce from "../hooks/useDebounce";
 import useSpeechRecognition from "../hooks/useSpeechRecognition";
+import { useLanguage } from "../i18n/LanguageContext";
+import { localizeField } from "../data/hotspots";
+import { localizeLayerName } from "../data/layers";
 
-/**
- * Tenta interpretar o comando de voz como navegação de andar.
- * Exemplos reconhecidos: "andar 3", "terceiro andar", "térreo", "andar 35", "5 andar"
- * Retorna o layerId correspondente ou null.
- */
-function parseFloorCommand(text, layers) {
+function parseFloorCommand(text, layers, language) {
   if (!text || !layers?.length) return null;
   const normalized = text.trim().toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // remove acentos
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  // Mapa de palavras ordinais → número
-  const ordinalMap = {
-    primeiro: 1, primeira: 1,
-    segundo: 2, segunda: 2,
-    terceiro: 3, terceira: 3,
-    quarto: 4, quarta: 4,
-    quinto: 5, quinta: 5,
-    sexto: 6, sexta: 6,
-    setimo: 7, setima: 7,
-    oitavo: 8, oitava: 8,
-    nono: 9, nona: 9,
-    decimo: 10, decima: 10,
+  const ordinalMaps = {
+    "pt-BR": {
+      primeiro: 1, primeira: 1, segundo: 2, segunda: 2, terceiro: 3, terceira: 3,
+      quarto: 4, quarta: 4, quinto: 5, quinta: 5, sexto: 6, sexta: 6,
+      setimo: 7, setima: 7, oitavo: 8, oitava: 8, nono: 9, nona: 9, decimo: 10,
+    },
+    en: {
+      first: 1, second: 2, third: 3, fourth: 4, fifth: 5,
+      sixth: 6, seventh: 7, eighth: 8, ninth: 9, tenth: 10,
+    },
+    es: {
+      primero: 1, primera: 1, segundo: 2, segunda: 2, tercero: 3, tercera: 3,
+      cuarto: 4, cuarta: 4, quinto: 5, quinta: 5, sexto: 6, sexta: 6,
+      septimo: 7, septima: 7, octavo: 8, octava: 8, noveno: 9, novena: 9, decimo: 10,
+    },
   };
 
-  // "térreo" ou "terreo"
-  if (/terreo/.test(normalized)) {
-    return layers.find((l) => l.id === "ground")?.id ?? null;
+  const groundTerms = {
+    "pt-BR": ["terreo"],
+    en: ["ground", "ground floor"],
+    es: ["planta baja", "planta"],
+  };
+
+  const gTerms = groundTerms[language] || groundTerms["pt-BR"];
+  for (const term of gTerms) {
+    if (normalized.includes(term)) {
+      return layers.find((l) => l.id === "ground")?.id ?? null;
+    }
   }
 
-  // "andar 3", "andar 35", "3 andar", "3o andar"
-  const numMatch = normalized.match(/(?:andar\s*(\d+))|(?:(\d+)\s*[oºª]?\s*andar)/);
+  const floorWords = { "pt-BR": "andar", en: "floor", es: "piso" };
+  const fw = floorWords[language] || "andar";
+  const numPattern = new RegExp(`(?:${fw}\\s*(\\d+))|(\\d+)\\s*[oºª]?\\s*${fw}`);
+  const numMatch = normalized.match(numPattern);
   if (numMatch) {
     const num = parseInt(numMatch[1] ?? numMatch[2], 10);
-    // Procura layer cujo name contém esse número
     const found = layers.find((l) => {
-      const layerNum = l.name.match(/(\d+)/);
-      return layerNum && parseInt(layerNum[1], 10) === num;
+      const names = typeof l.name === "object" ? Object.values(l.name) : [l.name];
+      return names.some((n) => {
+        const m = n.match(/(\d+)/);
+        return m && parseInt(m[1], 10) === num;
+      });
     });
     return found?.id ?? null;
   }
 
-  // "terceiro andar", "quinto andar"
+  const ordinalMap = ordinalMaps[language] || ordinalMaps["pt-BR"];
   for (const [word, num] of Object.entries(ordinalMap)) {
     if (normalized.includes(word)) {
       const found = layers.find((l) => {
-        const layerNum = l.name.match(/(\d+)/);
-        return layerNum && parseInt(layerNum[1], 10) === num;
+        const names = typeof l.name === "object" ? Object.values(l.name) : [l.name];
+        return names.some((n) => {
+          const m = n.match(/(\d+)/);
+          return m && parseInt(m[1], 10) === num;
+        });
       });
       if (found) return found.id;
     }
   }
 
-  // Busca direta pelo nome da layer ("1 andar", "terreo", etc.)
   for (const layer of layers) {
-    const layerNorm = layer.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const name = localizeLayerName(layer, language);
+    const layerNorm = name.toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (normalized.includes(layerNorm)) {
       return layer.id;
     }
@@ -66,7 +83,62 @@ function parseFloorCommand(text, layers) {
   return null;
 }
 
+function extractRoomFromPhrase(text, hotspots, language) {
+  if (!text || !hotspots?.length) return null;
+  const normalized = text.trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const roomPatterns = [
+    /(?:sala|room|sala-)(\d+)/gi,
+    /(\d{3})/g,
+  ];
+
+  const candidates = [];
+
+  for (const pattern of roomPatterns) {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(normalized)) !== null) {
+      const num = match[1] || match[0];
+      candidates.push(num.replace(/^0+/, ""));
+    }
+  }
+
+  for (const candidate of candidates) {
+    const found = hotspots.find((h) => {
+      const id = h.id.toLowerCase();
+      return id.includes(candidate) || id.endsWith(`-${candidate}`);
+    });
+    if (found) return found;
+  }
+
+  const words = normalized.split(/\s+/);
+  let bestMatch = null;
+  let bestScore = 0;
+
+  for (const spot of hotspots) {
+    const title = localizeField(spot.title, language)
+      .toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const titleWords = title.split(/\s+/);
+
+    let score = 0;
+    for (const w of words) {
+      if (w.length < 2) continue;
+      if (titleWords.some((tw) => tw.includes(w) || w.includes(tw))) {
+        score += w.length;
+      }
+    }
+    if (score > bestScore && score >= 3) {
+      bestScore = score;
+      bestMatch = spot;
+    }
+  }
+
+  return bestMatch;
+}
+
 function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, className }) {
+  const { t, language, speechLang } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState([]);
@@ -83,24 +155,35 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
     return base + extra;
   }, [searchTerm.length]);
 
-  // Filtrar sugestões com debounce
   useEffect(() => {
-    const normalized = debouncedTerm.trim().toLowerCase();
-    if (!normalized) {
+    const normalized = debouncedTerm.trim().toLowerCase()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!normalized || normalized.length < 2) {
       setSuggestions([]);
       return;
     }
 
     const matched = hotspots.filter((spot) => {
-      const title = spot.title?.toLowerCase() ?? "";
+      const title = localizeField(spot.title, language).toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       const label = spot.label?.toLowerCase() ?? "";
-      const block = spot.block?.toLowerCase() ?? "";
-      return title.includes(normalized) || label.includes(normalized) || block.includes(normalized);
+      const block = localizeField(spot.block, language).toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const desc = localizeField(spot.description, language).toLowerCase()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      const id = spot.id.toLowerCase();
+      return (
+        title.includes(normalized) ||
+        label.includes(normalized) ||
+        block.includes(normalized) ||
+        desc.includes(normalized) ||
+        id.includes(normalized)
+      );
     });
 
-    setSuggestions(matched.slice(0, 5));
+    setSuggestions(matched.slice(0, 8));
     setSelectedSuggestionIndex(-1);
-  }, [debouncedTerm, hotspots]);
+  }, [debouncedTerm, hotspots, language]);
 
   const activateGlow = useCallback(() => {
     setIsFocused(true);
@@ -113,8 +196,7 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
       const normalized = term.trim().toLowerCase();
       if (!normalized) return;
 
-      // 1) Tenta interpretar como comando de andar
-      const layerId = parseFloorCommand(term, layers);
+      const layerId = parseFloorCommand(term, layers, language);
       if (layerId) {
         onLayerChange?.(layerId);
         setSearchTerm("");
@@ -122,9 +204,16 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
         return;
       }
 
-      // 2) Busca por hotspot (sala)
+      const roomMatch = extractRoomFromPhrase(term, hotspots, language);
+      if (roomMatch) {
+        onMatch?.(roomMatch.id);
+        setSearchTerm("");
+        setSuggestions([]);
+        return;
+      }
+
       const match = hotspots.find((spot) => {
-        const title = spot.title?.toLowerCase() ?? "";
+        const title = localizeField(spot.title, language).toLowerCase();
         const label = spot.label?.toLowerCase() ?? "";
         return title.includes(normalized) || label.includes(normalized);
       });
@@ -135,7 +224,7 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
         setSuggestions([]);
       }
     },
-    [hotspots, layers, onMatch, onLayerChange]
+    [hotspots, layers, language, onMatch, onLayerChange]
   );
 
   const { isListening, toggle: toggleVoice } = useSpeechRecognition({
@@ -145,7 +234,8 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
     },
     onFinalResult: (text) => {
       performSearch(text);
-    }
+    },
+    lang: speechLang,
   });
 
   const handleSubmit = useCallback(
@@ -207,7 +297,7 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
       )}
       style={{ width: `min(${computedWidth}px, 90vw)`, maxWidth: "640px" }}
       role="search"
-      aria-label="Pesquisar salas e locais ou navegar por andares"
+      aria-label={t("searchAriaLabel")}
     >
       <form
         className="search-shell__form glass-surface flex items-center gap-3 rounded-full px-5 py-4 text-white shadow-soft"
@@ -220,7 +310,6 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
           }
         }}
       >
-        {/* Ícone de busca */}
         <svg className="h-5 w-5 shrink-0 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="11" cy="11" r="8" />
           <line x1="21" y1="21" x2="16.65" y2="16.65" />
@@ -238,8 +327,8 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
           }}
           onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent text-sm text-white placeholder-white/50 focus:outline-none"
-          placeholder="Diga &quot;andar 3&quot; ou pesquise uma sala..."
-          aria-label="Campo de pesquisa de salas e andares"
+          placeholder={t("searchPlaceholder")}
+          aria-label={t("searchLabel")}
           aria-expanded={suggestions.length > 0}
           aria-haspopup="listbox"
           aria-autocomplete="list"
@@ -248,9 +337,9 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
         <button
           type="submit"
           className="ripple-container min-h-[44px] rounded-full bg-slate-900/65 px-4 py-2 text-xs font-semibold uppercase tracking-wide transition hover:bg-slate-800/80"
-          aria-label="Buscar"
+          aria-label={t("searchButton")}
         >
-          Buscar
+          {t("searchButton")}
         </button>
 
         <button
@@ -260,8 +349,8 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
             isListening && "audio-trigger--active"
           )}
           aria-pressed={isListening}
-          aria-label={isListening ? "Parar reconhecimento de voz" : "Pesquisar por voz"}
-          title="Pesquisar por voz (pt-BR)"
+          aria-label={isListening ? t("voiceStop") : t("voiceStart")}
+          title={t("voiceTitle")}
           onClick={toggleVoice}
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -273,12 +362,11 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
         </button>
       </form>
 
-      {/* Sugestões */}
       {suggestions.length > 0 && (
         <ul
           className="glass-surface absolute inset-x-0 top-full z-50 mt-2 max-h-60 overflow-y-auto rounded-2xl py-2 custom-scrollbar"
           role="listbox"
-          aria-label="Sugestões de pesquisa"
+          aria-label={t("suggestionsLabel")}
         >
           {suggestions.map((spot, index) => (
             <li
@@ -298,9 +386,9 @@ function SearchBar({ hotspots = [], layers = [], onMatch, onLayerChange, classNa
                 {spot.label}
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">{spot.title}</div>
+                <div className="truncate font-medium">{localizeField(spot.title, language)}</div>
                 <div className="truncate text-xs text-white/50">
-                  {spot.block} · {spot.floorLabel}
+                  {localizeField(spot.block, language)} · {localizeField(spot.floorLabel, language)}
                 </div>
               </div>
             </li>

@@ -1,7 +1,10 @@
 import React from "react";
 import clsx from "clsx";
+import { useLanguage } from "../../i18n/LanguageContext";
 
 function AccessibilityToggle({ highContrast, onToggle }) {
+  const { t } = useLanguage();
+
   return (
     <button
       type="button"
@@ -12,9 +15,9 @@ function AccessibilityToggle({ highContrast, onToggle }) {
           ? "border-yellow-400 bg-yellow-400/90 text-slate-900 shadow-glow"
           : "border-white/20 bg-slate-900/70 text-white/70 hover:bg-slate-800/80 hover:text-white"
       )}
-      aria-label={highContrast ? "Desativar alto contraste" : "Ativar alto contraste"}
+      aria-label={highContrast ? t("disableHighContrast") : t("enableHighContrast")}
       aria-pressed={highContrast}
-      title="Alto contraste"
+      title={t("highContrastTitle")}
     >
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="12" r="10" />

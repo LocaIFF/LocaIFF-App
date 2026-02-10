@@ -1,16 +1,21 @@
 import React from "react";
 import clsx from "clsx";
 import RippleButton from "./common/RippleButton";
+import { useLanguage } from "../i18n/LanguageContext";
+import { localizeLayerName } from "../data/layers";
 
 function LayerSelector({ layers, currentLayerId, onChange }) {
+  const { t, language } = useLanguage();
+
   return (
-    <nav className="flex flex-col items-center gap-2 text-white sm:gap-3 md:gap-4" aria-label="Seleção de andares">
-      <span className="text-[10px] uppercase tracking-[0.25em] text-white/60 sm:text-xs">Andares</span>
-      <div className="flex flex-col gap-1.5 sm:gap-2" role="radiogroup" aria-label="Lista de andares">
+    <nav className="flex flex-col items-center gap-2 text-white sm:gap-3 md:gap-4" aria-label={t("floorSelection")}>
+      <span className="text-[10px] uppercase tracking-[0.25em] text-white/60 sm:text-xs">{t("floors")}</span>
+      <div className="flex flex-col gap-1.5 sm:gap-2" role="radiogroup" aria-label={t("floorList")}>
         {[...layers]
           .reverse()
           .map((layer) => {
             const isActive = currentLayerId === layer.id;
+            const name = localizeLayerName(layer, language);
             return (
               <RippleButton
                 key={layer.id}
@@ -24,9 +29,9 @@ function LayerSelector({ layers, currentLayerId, onChange }) {
                 onClick={() => onChange(layer.id)}
                 role="radio"
                 aria-checked={isActive}
-                aria-label={`Selecionar ${layer.name}`}
+                aria-label={`${t("selectFloor")} ${name}`}
               >
-                {layer.name}
+                {name}
               </RippleButton>
             );
           })}

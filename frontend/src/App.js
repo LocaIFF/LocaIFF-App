@@ -4,12 +4,15 @@ import MapViewer from "./components/MapViewer";
 import InfoPanel from "./components/InfoPanel";
 import GlassSurface from "./components/common/GlassSurface";
 import AccessibilityToggle from "./components/common/AccessibilityToggle";
+import LanguageSelector from "./components/common/LanguageSelector";
 import layers from "./data/layers";
 import hotspotsData from "./data/hotspots";
 import useHighContrast from "./hooks/useHighContrast";
 import { requestRoute, layerIdToFloor } from "./api";
+import { useLanguage } from "./i18n/LanguageContext";
 
 function App() {
+  const { t } = useLanguage();
   const [currentLayerId, setCurrentLayerId] = useState(layers[0]?.id ?? null);
   const [selectedHotspotId, setSelectedHotspotId] = useState(null);
   const [routePoints, setRoutePoints] = useState([]);
@@ -39,16 +42,13 @@ function App() {
     [selectedHotspotId]
   );
 
-  // Filtra pontos da rota para exibir apenas no andar atual
   const currentFloor = useMemo(() => layerIdToFloor(currentLayerId), [currentLayerId]);
   const visibleRoutePoints = useMemo(() => {
     if (!routePoints || routePoints.length === 0) return [];
-    // Se os pontos não têm floor (mock antigo), exibir todos
     if (routePoints[0].floor === undefined) return routePoints;
     return routePoints.filter((p) => p.floor === currentFloor);
   }, [routePoints, currentFloor]);
 
-  // ── Timers ──
   const cancelAutoClose = useCallback(() => {
     if (autoCloseTimerRef.current) {
       clearTimeout(autoCloseTimerRef.current);
@@ -84,7 +84,6 @@ function App() {
     autoCloseTimerRef.current = setTimeout(handleClosePanel, 30000);
   }, [cancelAutoClose, handleClosePanel]);
 
-  // ── Handlers ──
   const handleLayerChange = useCallback(
     (layerId) => {
       setCurrentLayerId(layerId);
@@ -102,7 +101,6 @@ function App() {
     (hotspotId) => {
       if (!hotspotId) return;
 
-      // Se hotspot está em outra camada, troca automaticamente
       const spot = hotspotsData.find((s) => s.id === hotspotId);
       if (spot && spot.layerId !== currentLayerId) {
         setCurrentLayerId(spot.layerId);
@@ -130,7 +128,7 @@ function App() {
         const payload = await requestRoute(selectedHotspotId, destinationId);
         setRoutePoints(payload.pointsPercent ?? []);
       } catch (error) {
-        console.error("Falha ao solicitar rota:", error);
+        console.error("Route request failed:", error);
       } finally {
         setIsLoadingRoute(false);
       }
@@ -145,7 +143,6 @@ function App() {
     setIsInfoClosing(false);
   }, [cancelAutoClose, cancelClosingAnim]);
 
-  // ── Preload de imagens ──
   useEffect(() => {
     if (preloadedRef.current) return;
     layers.forEach((l) => {
@@ -155,7 +152,6 @@ function App() {
     preloadedRef.current = true;
   }, []);
 
-  // ── Cleanup ──
   useEffect(() => {
     return () => {
       cancelAutoClose();
@@ -165,19 +161,18 @@ function App() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-slate-950 text-white">
-      {/* ── Sidebar esquerda ── */}
       <div className="pointer-events-none absolute left-3 top-3 z-[60] flex flex-col gap-3 sm:left-4 sm:top-4 sm:gap-3 md:left-6 md:top-6 md:gap-4">
-        {/* Logo */}
         <GlassSurface className="pointer-events-auto w-44 px-4 py-3 shadow-soft sm:w-48 sm:px-5 sm:py-3 md:w-48 md:px-5 md:py-4">
           <div className="leading-tight">
-            <span className="text-[10px] uppercase tracking-[0.3em] text-white/50 sm:text-xs">Bem-vindo ao</span>
+            <span className="text-[10px] uppercase tracking-[0.3em] text-white/50 sm:text-xs">
+              {t("welcomeTo")}
+            </span>
             <h1 className="bg-gradient-to-r from-[#32A041] via-[#32A041] to-white bg-clip-text text-2xl font-extrabold uppercase tracking-wide text-transparent sm:text-3xl">
               LOCAIFF
             </h1>
           </div>
         </GlassSurface>
 
-        {/* Seletor de camadas */}
         <GlassSurface className="pointer-events-auto w-44 p-3 shadow-soft sm:w-48 sm:p-3 md:w-48 md:p-4">
           <LayerSelector
             layers={layers}
@@ -185,17 +180,17 @@ function App() {
             onChange={handleLayerChange}
           />
         </GlassSurface>
+      </div>
 
-        {/* Alto contraste */}
+      <div className="pointer-events-none absolute bottom-4 right-4 z-[60] flex items-center gap-2 sm:bottom-6 sm:right-6">
         <div className="pointer-events-auto">
-          <AccessibilityToggle
-            highContrast={highContrast}
-            onToggle={toggleHighContrast}
-          />
+          <AccessibilityToggle highContrast={highContrast} onToggle={toggleHighContrast} />
+        </div>
+        <div className="pointer-events-auto">
+          <LanguageSelector />
         </div>
       </div>
 
-      {/* ── Mapa ── */}
       <div className="absolute inset-0">
         <MapViewer
           key={viewerKey}
@@ -211,16 +206,14 @@ function App() {
         />
       </div>
 
-      {/* ── Loading overlay de rota ── */}
       {isLoadingRoute && (
         <div className="pointer-events-none absolute inset-0 z-[70] flex items-center justify-center">
           <div className="glass-surface animate-fade-in rounded-2xl px-8 py-4 text-sm font-medium text-white shadow-glow">
-            Calculando rota…
+            {t("calculatingRoute")}
           </div>
         </div>
       )}
 
-      {/* ── Painel lateral (desktop/tablet) / bottom sheet (mobile) ── */}
       {selectedHotspot && (
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-[55] flex items-end justify-center p-3 sm:inset-x-auto sm:top-0 sm:right-4 sm:bottom-0 sm:flex sm:items-center sm:justify-end sm:p-0 md:right-6">
           <div className="pointer-events-auto w-full max-w-sm sm:w-auto sm:max-w-none" style={{ width: "var(--info-panel-width)" }}>

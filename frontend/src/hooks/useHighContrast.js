@@ -24,9 +24,7 @@ export default function useHighContrast() {
     }
     try {
       localStorage.setItem(STORAGE_KEY, String(enabled));
-    } catch {
-      // silently ignore
-    }
+    } catch {}
   }, [enabled]);
 
   return { highContrast: enabled, toggleHighContrast: toggle };

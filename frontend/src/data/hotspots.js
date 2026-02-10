@@ -5,10 +5,17 @@ const hotspots = [
     xPercent: 22,
     yPercent: 68,
     label: "101",
-    title: "Sala 101",
-    block: "Bloco A",
-    floorLabel: "Térreo",
-    description: "Sala de atendimento geral com capacidade para 12 pessoas."
+    title: { "pt-BR": "Sala 101", en: "Room 101", es: "Sala 101" },
+    block: { "pt-BR": "Bloco A", en: "Block A", es: "Bloque A" },
+    floorLabel: { "pt-BR": "Térreo", en: "Ground Floor", es: "Planta Baja" },
+    description: {
+      "pt-BR": "Sala de atendimento geral com capacidade para 12 pessoas.",
+      en: "General service room with capacity for 12 people.",
+      es: "Sala de atención general con capacidad para 12 personas.",
+    },
+    capacity: 12,
+    roomType: "SALA",
+    accessiblePcd: true,
   },
   {
     id: "sala-102",
@@ -16,10 +23,17 @@ const hotspots = [
     xPercent: 48,
     yPercent: 55,
     label: "102",
-    title: "Laboratório de TI",
-    block: "Bloco A",
-    floorLabel: "Térreo",
-    description: "Laboratório equipado para treinamentos técnicos."
+    title: { "pt-BR": "Laboratório de TI", en: "IT Laboratory", es: "Laboratorio de TI" },
+    block: { "pt-BR": "Bloco A", en: "Block A", es: "Bloque A" },
+    floorLabel: { "pt-BR": "Térreo", en: "Ground Floor", es: "Planta Baja" },
+    description: {
+      "pt-BR": "Laboratório equipado para treinamentos técnicos com 20 máquinas.",
+      en: "Laboratory equipped for technical training with 20 machines.",
+      es: "Laboratorio equipado para entrenamientos técnicos con 20 máquinas.",
+    },
+    capacity: 20,
+    roomType: "LABORATORIO",
+    accessiblePcd: true,
   },
   {
     id: "sala-201",
@@ -27,10 +41,17 @@ const hotspots = [
     xPercent: 30,
     yPercent: 40,
     label: "201",
-    title: "Sala 201",
-    block: "Bloco B",
-    floorLabel: "1º Andar",
-    description: "Sala de reuniões com videoconferência."
+    title: { "pt-BR": "Sala 201", en: "Room 201", es: "Sala 201" },
+    block: { "pt-BR": "Bloco B", en: "Block B", es: "Bloque B" },
+    floorLabel: { "pt-BR": "1º Andar", en: "1st Floor", es: "1er Piso" },
+    description: {
+      "pt-BR": "Sala de reuniões com videoconferência e quadro interativo.",
+      en: "Meeting room with videoconference and interactive whiteboard.",
+      es: "Sala de reuniones con videoconferencia y pizarra interactiva.",
+    },
+    capacity: 16,
+    roomType: "SALA",
+    accessiblePcd: true,
   },
   {
     id: "sala-202",
@@ -38,10 +59,17 @@ const hotspots = [
     xPercent: 65,
     yPercent: 50,
     label: "202",
-    title: "Sala 202",
-    block: "Bloco B",
-    floorLabel: "1º Andar",
-    description: "Escritório administrativo compartilhado."
+    title: { "pt-BR": "Sala 202", en: "Room 202", es: "Sala 202" },
+    block: { "pt-BR": "Bloco B", en: "Block B", es: "Bloque B" },
+    floorLabel: { "pt-BR": "1º Andar", en: "1st Floor", es: "1er Piso" },
+    description: {
+      "pt-BR": "Escritório administrativo compartilhado com 8 estações de trabalho.",
+      en: "Shared administrative office with 8 workstations.",
+      es: "Oficina administrativa compartida con 8 estaciones de trabajo.",
+    },
+    capacity: 8,
+    roomType: "ESCRITORIO",
+    accessiblePcd: true,
   },
   {
     id: "sala-301",
@@ -49,10 +77,17 @@ const hotspots = [
     xPercent: 40,
     yPercent: 35,
     label: "301",
-    title: "Sala 301",
-    block: "Bloco C",
-    floorLabel: "2º Andar",
-    description: "Auditório principal para eventos."
+    title: { "pt-BR": "Sala 301", en: "Room 301", es: "Sala 301" },
+    block: { "pt-BR": "Bloco C", en: "Block C", es: "Bloque C" },
+    floorLabel: { "pt-BR": "2º Andar", en: "2nd Floor", es: "2do Piso" },
+    description: {
+      "pt-BR": "Auditório principal para eventos com projetor e sistema de som.",
+      en: "Main auditorium for events with projector and sound system.",
+      es: "Auditorio principal para eventos con proyector y sistema de sonido.",
+    },
+    capacity: 80,
+    roomType: "AUDITORIO",
+    accessiblePcd: true,
   },
   {
     id: "sala-302",
@@ -60,11 +95,24 @@ const hotspots = [
     xPercent: 75,
     yPercent: 60,
     label: "302",
-    title: "Sala 302",
-    block: "Bloco C",
-    floorLabel: "2º Andar",
-    description: "Espaço coworking com 24 posições."
-  }
+    title: { "pt-BR": "Sala 302", en: "Room 302", es: "Sala 302" },
+    block: { "pt-BR": "Bloco C", en: "Block C", es: "Bloque C" },
+    floorLabel: { "pt-BR": "2º Andar", en: "2nd Floor", es: "2do Piso" },
+    description: {
+      "pt-BR": "Espaço coworking com 24 posições e internet de alta velocidade.",
+      en: "Coworking space with 24 seats and high-speed internet.",
+      es: "Espacio coworking con 24 posiciones e internet de alta velocidad.",
+    },
+    capacity: 24,
+    roomType: "COWORKING",
+    accessiblePcd: true,
+  },
 ];
 
 export default hotspots;
+
+export function localizeField(field, language) {
+  if (!field) return "";
+  if (typeof field === "string") return field;
+  return field[language] ?? field["pt-BR"] ?? "";
+}

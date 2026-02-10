@@ -1,17 +1,11 @@
-/**
- * Converte pontos percentuais em pixels absolutos.
- */
 export function percentPointsToPixels(pointsPercent = [], width = 0, height = 0) {
   if (!width || !height) return [];
   return pointsPercent.map((point) => ({
     x: (point.xPercent / 100) * width,
-    y: (point.yPercent / 100) * height
+    y: (point.yPercent / 100) * height,
   }));
 }
 
-/**
- * Monta a string de caminho SVG "M ... L ... L ..." em coordenadas percentuais.
- */
 export function buildRoutePath(pointsPercent = []) {
   if (!pointsPercent.length) return "";
 
@@ -20,10 +14,6 @@ export function buildRoutePath(pointsPercent = []) {
   return [`M ${first.xPercent} ${first.yPercent}`, ...segments].join(" ");
 }
 
-/**
- * Calcula o comprimento aproximado de um polilinha (coordenadas percentuais)
- * para uso com stroke-dasharray / stroke-dashoffset para animação de desenho.
- */
 export function estimatePathLength(pointsPercent = []) {
   let length = 0;
   for (let i = 1; i < pointsPercent.length; i++) {
