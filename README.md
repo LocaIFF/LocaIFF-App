@@ -480,7 +480,54 @@ curl -X POST http://localhost:8080/api/routes \
 
 ---
 
-## 📋 Roadmap
+## � Deployment
+
+O projeto é full-stack: backend em Spring Boot (Java) e frontend em React. Para deploy em produção, é necessário separar os deployments devido às limitações das plataformas.
+
+### Frontend (React) no Vercel
+
+1. **Configure o ambiente**:
+   - No Vercel, importe apenas a pasta `frontend/` como projeto.
+   - Defina a **Root Directory** como `frontend/`.
+   - Adicione a variável de ambiente: `REACT_APP_API_BASE_URL=https://seu-backend-deployado.com/api` (substitua pela URL do backend).
+
+2. **Build automático**:
+   - O Vercel detectará o `package.json` e executará `npm run build`.
+   - O `vercel.json` configura o roteamento para SPA.
+
+3. **Deploy**:
+   - Faça push para o repositório Git conectado ao Vercel.
+   - O frontend será servido estaticamente com CDN global.
+
+### Backend (Spring Boot) em Plataforma PaaS
+
+O backend não pode ser deployado no Vercel (não suporta JVM). Use uma plataforma como Railway, Render ou Heroku.
+
+#### Exemplo: Railway (Recomendado)
+
+1. **Configure o repositório**:
+   - Push o projeto completo para Git (GitHub/GitLab).
+   - Conecte o repositório ao Railway.
+
+2. **Deploy**:
+   - Railway detectará o `pom.xml` e fará build com Maven.
+   - Configure variáveis de ambiente se necessário (e.g., para banco PostgreSQL).
+
+3. **Banco de dados**:
+   - Migre de H2 para PostgreSQL no Railway.
+   - Atualize `application.properties` para produção.
+
+#### Alternativas
+- **Render**: Similar ao Railway, suporta Java/Spring Boot.
+- **Heroku**: `git push heroku main` após configurar.
+
+### Teste em Produção
+- Após deploy, teste a integração: frontend deve chamar o backend via `REACT_APP_API_BASE_URL`.
+- Monitore logs no Railway/Vercel para erros.
+
+---
+
+## �📋 Roadmap
 
 | Fase               | Entregável                                                                |
 | ------------------ | ------------------------------------------------------------------------- |
